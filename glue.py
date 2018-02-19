@@ -8,20 +8,19 @@ import os
 import random
 
 # variables
-symbols_in_image = 5
-num_of_images = 100
-num_of_categories = 20
-num_of_symbols = 14
+symbols_in_image = 5    # the no. of symbols every formula has
+num_of_images = 100     # the no of formulas created
+num_of_categories = 15  # the number of symbols the formulas are put together with
 
 input_path = '/home/laars/uni/WS2017/tensorflow/final/data/extracted_images'
 output_path = '/home/laars/uni/WS2017/tensorflow/final/glued_images'
 
 # Method to get single pictures
-def get_symbols(num_of_symbols):
+def get_symbols(num_of_categories):
     symbols = []
     counter = 0
     for root, dirs, files in os.walk(input_path):
-        if counter == num_of_symbols:
+        if counter == num_of_categories:
             break
         for file in files:
             path_file = os.path.join(root, file)
@@ -54,5 +53,5 @@ def glue(symbols, symbols_in_image, num_of_images):
 
 
 if __name__ == "__main__":
-    symbols = get_symbols(num_of_symbols)
+    symbols = get_symbols(num_of_categories)
     glue(symbols, symbols_in_image, num_of_images)
