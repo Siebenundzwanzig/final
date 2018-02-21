@@ -6,7 +6,7 @@ import Image
 import sys
 import os
 import random
-
+import re
 # variables
 symbols_in_image = 5    # the no. of symbols every formula has
 num_of_images = 100     # the no of formulas created
@@ -19,12 +19,13 @@ output_path = '/home/laars/uni/WS2017/tensorflow/final/glued_images'
 def get_symbols(num_of_categories):
     symbols = []
     counter = 0
+    print os.walk(input_path)
     for root, dirs, files in os.walk(input_path):
         if counter == num_of_categories:
             break
         for file in files:
             path_file = os.path.join(root, file)
-            symbols.append(path_file)
+            symbols.append((path_file, re.sub("/.*", "", path_file.replace(input_path, "").replace("/", "", 1))))
         counter += 1
     return symbols
 
@@ -35,8 +36,10 @@ def glue(symbols, symbols_in_image, num_of_images):
         for i in range(symbols_in_image):
             symbols_used.append(random.choice(symbols))
 
-        images = map(Image.open, symbols_used)
-
+        images = map(Image.open, [symbol[0] for symbol in symbols_used])
+        name = ""
+        for symbol in symbols_used:
+            name += symbol[1]
         widths, heights = zip(*(i.size for i in images))
 
         total_width = sum(widths)
@@ -46,10 +49,10 @@ def glue(symbols, symbols_in_image, num_of_images):
 
         x_offset = 0
         for im in images:
-            new_im.paste(im, (x_offset,0))
+            new_im.paste(im, (x_offset, 0))
             x_offset += im.size[0]
 
-        new_im.save('%s/glued_image%s.jpg' % (output_path, j))
+        new_im.save(output_path + "/" + name + ".jpg")
 
 
 if __name__ == "__main__":
