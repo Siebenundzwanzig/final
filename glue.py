@@ -2,7 +2,7 @@
 ### An arbitrary number of symbols, length and number of equations is set.
 
 
-import Image
+from PIL import Image
 import sys
 import os
 import random
@@ -19,7 +19,6 @@ output_path = '/home/laars/uni/WS2017/tensorflow/final/glued_images'
 def get_symbols(num_of_categories):
     symbols = []
     counter = 0
-    print os.walk(input_path)
     for root, dirs, files in os.walk(input_path):
         if counter == num_of_categories:
             break
@@ -36,7 +35,8 @@ def glue(symbols, symbols_in_image, num_of_images):
         for i in range(symbols_in_image):
             symbols_used.append(random.choice(symbols))
 
-        images = map(Image.open, [symbol[0] for symbol in symbols_used])
+        images = list(map(Image.open, [symbol[0] for symbol in symbols_used]))
+
         name = ""
         for symbol in symbols_used:
             name += symbol[1]
@@ -45,7 +45,7 @@ def glue(symbols, symbols_in_image, num_of_images):
         total_width = sum(widths)
         max_height = max(heights)
 
-        new_im = Image.new('RGB', (total_width, max_height))
+        new_im = Image.new('RGB', (total_width, max_height), (255, 255, 255))
 
         x_offset = 0
         for im in images:
