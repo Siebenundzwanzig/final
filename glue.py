@@ -13,7 +13,7 @@ num_of_images = 100     # the no of formulas created
 num_of_categories = 15  # the number of symbols the formulas are put together with
 
 input_path = '/home/laars/uni/WS2017/tensorflow/final/data/extracted_images'
-output_path = '/home/laars/uni/WS2017/tensorflow/final/glued_images'
+output_folder = '/home/laars/uni/WS2017/tensorflow/final/glued_images'
 
 # Method to get single pictures
 def get_symbols(num_of_categories):
@@ -36,7 +36,7 @@ def get_symbols(num_of_categories):
     return symbols
 
 # Method to glue symbols together as a "formula"
-def glue(symbols, symbols_in_image, num_of_images):
+def glue(symbols, symbols_in_image, num_of_images, output_path):
     # counts = {}
     # for key in symbols:
     #     counts[key] = 0
@@ -71,6 +71,9 @@ def glue(symbols, symbols_in_image, num_of_images):
 
 
 if __name__ == "__main__":
+
     symbols = get_symbols(num_of_categories)
 
-    glue(symbols, symbols_in_image, num_of_images)
+    glue(symbols, symbols_in_image, int(num_of_images/10) * 7, output_folder + "/training")
+    glue(symbols, symbols_in_image, int(num_of_images/10) * 2, output_folder + "/validation")
+    glue(symbols, symbols_in_image, int(num_of_images/10), output_folder + "/testing")
