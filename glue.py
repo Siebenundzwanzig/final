@@ -17,29 +17,41 @@ output_path = '/home/laars/uni/WS2017/tensorflow/final/glued_images'
 
 # Method to get single pictures
 def get_symbols(num_of_categories):
-    symbols = []
+    symbols = {}
     counter = 0
     for root, dirs, files in os.walk(input_path):
         if counter == num_of_categories:
             break
+        actual_symbol = []
         for file in files:
             path_file = os.path.join(root, file)
-            symbols.append((path_file, re.sub("/.*", "", path_file.replace(input_path, "").replace("/", "", 1))))
+            actual_symbol.append(path_file)
+
+            symbols[re.sub("/.*", "", path_file.replace(input_path, "").replace("/", "", 1))] = actual_symbol
+
+            # symbols((path_file, re.sub("/.*", "", path_file.replace(input_path, "").replace("/", "", 1))))
+
         counter += 1
+
     return symbols
 
 # Method to glue symbols together as a "formula"
 def glue(symbols, symbols_in_image, num_of_images):
+    # counts = {}
+    # for key in symbols:
+    #     counts[key] = 0
     for j in range(num_of_images):
         symbols_used = []
         for i in range(symbols_in_image):
-            symbols_used.append(random.choice(symbols))
+            # key = random.choice(list(symbols.keys()))
+            key = random.choice(list(symbols.keys()))
+            # counts[key] = counts[key] + 1
+            symbols_used.append((key, random.choice(symbols[key])))
 
-        images = list(map(Image.open, [symbol[0] for symbol in symbols_used]))
+        images = list(map(Image.open, [symbol[1] for symbol in symbols_used]))
 
-        name = ""
-        for symbol in symbols_used:
-            name += symbol[1]
+
+        name = "_".join([string[0] for string in symbols_used])
         widths, heights = zip(*(i.size for i in images))
 
         total_width = sum(widths)
@@ -54,7 +66,11 @@ def glue(symbols, symbols_in_image, num_of_images):
 
         new_im.save(output_path + "/" + name + ".jpg")
 
+    # print(counts)
+    print("Done.")
+
 
 if __name__ == "__main__":
     symbols = get_symbols(num_of_categories)
+
     glue(symbols, symbols_in_image, num_of_images)
