@@ -10,8 +10,7 @@ import re
 import numpy as np
 # variables
 symbols_in_image = 5    # the no. of symbols every formula has
-num_of_images = 10     # the no of formulas created
-# num_of_categories = 15  # the number of symbols the formulas are put together with
+num_of_images = 10000     # the no of formulas created
 
 input_path = '/home/laars/uni/WS2017/tensorflow/final/data/extracted_images'
 output_folder = '/home/laars/uni/WS2017/tensorflow/final/glued_images'
@@ -52,7 +51,6 @@ def get_symbols():
 
             symbols[re.sub("/.*", "", path_file.replace(input_path, "").replace("/", "", 1))] = actual_symbol
 
-            # symbols((path_file, re.sub("/.*", "", path_file.replace(input_path, "").replace("/", "", 1))))
     return symbols
 
 # Method to glue symbols together as a "formula"
@@ -60,20 +58,17 @@ def glue(symbols, symbols_in_image, num_of_images, output_path):
     # counts = {}
     # for key in symbols:
     #     counts[key] = 0
-    all_im = np.array([])
-    one_hots = np.array([])
+    all_im = []
+    one_hots = []
     for j in range(num_of_images):
         symbols_used = []
         for i in range(symbols_in_image):
-            # key = random.choice(list(symbols.keys()))
             key = random.choice(list(symbols.keys()))
             # counts[key] = counts[key] + 1
             symbols_used.append((key, random.choice(symbols[key])))
 
         images = list(map(Image.open, [symbol[1] for symbol in symbols_used]))
 
-
-        name = "_".join([string[0] for string in symbols_used])
         widths, heights = zip(*(i.size for i in images))
 
         total_width = sum(widths)
@@ -85,7 +80,9 @@ def glue(symbols, symbols_in_image, num_of_images, output_path):
         for im in images:
             new_im.paste(im, (x_offset, 0))
             x_offset += im.size[0]
-        all_im = np.append(all_im, new_im)
+        all_im.append(np.asarray(new_im))
+        #print(all_im.shape)
+
 
         label = []
         for string in symbols_used:
@@ -99,13 +96,15 @@ def glue(symbols, symbols_in_image, num_of_images, output_path):
         one_hot[np.arange(5), label_as_num] = 1
         # print(one_hot)
 
-        one_hots = np.append(one_hots, one_hot)
+        one_hots.append(one_hot)
 
-    # new_im.save(output_path + "/" + name + ".jpg")
-    print(all_im.shape, one_hots.shape)
+    # print(all_im.shape, one_hots.shape)
     np.save(output_path + "_data", all_im)
     np.save(output_path + "_labels", one_hots)
+    # print(all_im.shape, one_hots.shape)
+
     # print(counts)
+
     print("Done.")
 
 
