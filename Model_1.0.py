@@ -4,8 +4,8 @@ from final import batch_generator_3
 #from final.dir import Dir
 
 # Hyperparameter
-epochs = 2
-batch_size = 4
+epochs = 10
+batch_size = 10
 
 
 time_steps = 5
@@ -17,9 +17,9 @@ vocab_size = 20
 input_size = [1, 25, 5, 8]
 weight_size = [1, 25, 8, 8]
 images = tf.placeholder(tf.float32, [None, 225, 45, 3])
-labels = tf.placeholder(tf.int32, [None, 5])
-captions = tf.get_variable("embedding_space", input_size, tf.float32, initializer=tf.truncated_normal_initializer(stddev=1))
-embed_captions = tf.nn.embedding_lookup(captions, vocab_size)
+labels = tf.placeholder(tf.int32, [None, 5, 20])
+embed_captions = tf.get_variable("embedding_space", input_size, tf.float32, initializer=tf.truncated_normal_initializer(stddev=1))
+#embed_captions = tf.nn.embedding_lookup(captions, labels)
 
 
 def f_att(feature_map):
@@ -98,8 +98,12 @@ def lstm(hidden_state, cell_state, embed_captions, context_vector, length):
         global final_maps
         final_maps = tf.nn.tanh(tf.nn.conv2d_transpose(context_vector, kernels, [1, 225, 45, 3], strides=[1, 1, 1, 1], padding='SAME') + bias)
         global final_captions
-        final_captions = tf.reshape(embed_captions, [-1, 5, 20])
-
+        #print(embed_captions)
+        #final_captions=embed_captions
+        final_captions = tf.reshape(embed_captions, [1, 20, 5, 10])
+        caption_kernel = tf.get_variable("caption_kernel", [1, 1, 10, 1], initializer=tf.zeros_initializer())
+        final_captions = tf.nn.conv2d(final_captions, caption_kernel, strides=[1, 1, 1, 1], padding="SAME")
+        final_captions = tf.reshape(final_captions, [1, 5, 20])
 
 with tf.variable_scope("ConvLayer1"):
     bias = tf.get_variable("bias", [16], initializer=tf.zeros_initializer())
@@ -114,19 +118,19 @@ with tf.variable_scope("ConvLayer2"):
     maps = tf.nn.tanh(tf.nn.conv2d(maps, kernels, strides=[1, 1, 1, 1], padding='SAME')+bias)
     maps = tf.nn.max_pool(maps, [1, 2, 2, 1], strides=[1, 3, 3, 1], padding="SAME")
 
-
 with tf.variable_scope("start_lstm"):
     lstm(maps, maps, embed_captions, maps, 5)
 
 
 with tf.variable_scope("train"):
     print(final_captions)
-    cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=final_captions)
+    print(labels)
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=labels[-1], logits=final_captions)
     mean_cross_entropy = tf.reduce_mean(cross_entropy)
     optimizer = tf.train.AdamOptimizer(0.0001)
     training_step = optimizer.minimize(mean_cross_entropy)
-    print(final_captions)
-    print(labels)
+    #print(final_captions)
+    #print(labels)
     correct_prediction = tf.equal(tf.argmax(final_captions, 2), tf.argmax(tf.one_hot(labels, 5), 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
@@ -135,7 +139,7 @@ train_acc_list = []
 
 
 batch_gen = batch_generator_3.Attend()
-session = tf.session()
+session = tf.Session()
 session.run(tf.global_variables_initializer())
 
 for x in range(epochs):
@@ -149,10 +153,13 @@ for x in range(epochs):
 
         training_images = training_data[0]
         training_labels = training_data[1]
+        print(training_labels.shape)
+        training_images = np.resize(training_images, [batch_size, 225, 45, 3])
+        print(training_labels.shape)
 
         loss, _, train_accuracy = session.run([mean_cross_entropy, training_step, accuracy],
                                               feed_dict={images: training_images,
-                                                           labels: training_labels})
+                                                        labels: training_labels})
 
         train_acc_list.append(train_accuracy)
 
