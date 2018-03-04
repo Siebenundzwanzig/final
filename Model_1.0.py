@@ -3,8 +3,10 @@ import numpy as np
 from final import batch_generator_3
 #from final.dir import Dir
 import matplotlib.pyplot as plt
+
+summaries_dir = './summaries'
 # Hyperparameter
-epochs = 1
+epochs = 500
 
 
 time_steps = 5
@@ -23,6 +25,19 @@ weight_size = [batch_size, 5, 8, 8]
 #embed_captions = tf.nn.embedding_lookup(captions, labels)
 
 
+def variable_summaries(var):
+  """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
+  with tf.name_scope('summaries'):
+    mean = tf.reduce_mean(var)
+    tf.summary.scalar('mean', mean)
+    with tf.name_scope('stddev'):
+      stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+    tf.summary.scalar('stddev', stddev)
+    tf.summary.scalar('max', tf.reduce_max(var))
+    tf.summary.scalar('min', tf.reduce_min(var))
+    tf.summary.histogram('histogram', var)
+
+
 def f_att(feature_map):
 
     with tf.variable_scope("attention_layer", reuse=tf.AUTO_REUSE):
@@ -33,6 +48,8 @@ def f_att(feature_map):
         att = tf.tanh(tf.matmul(feature_map, tf.reshape(a_weights, [-1, 5, 8, 8]))+bias)
         alpha = tf.nn.softmax(att)
         context = (alpha*feature_map)
+        #tf.summary.image('context', context)
+        #variable_summaries(a_weights)
         return context
 
 #TODO initialization of hidden and cell
@@ -112,6 +129,8 @@ def lstm(hidden_state, cell_state, embed_captions, context_vector, length):
         caption_kernel = tf.get_variable("caption_kernel", [1, 1, 10, 1], initializer=tf.zeros_initializer())
         final_captions = tf.nn.conv2d(final_captions, caption_kernel, strides=[1, 1, 1, 1], padding="SAME")
         final_captions = tf.reshape(final_captions, [-1, 5, 20])
+        #tf.summary.image('final_maps', final_maps[1])
+        #variable_summaries(final_captions)
         return final_captions, final_maps
 
 
@@ -141,20 +160,27 @@ with tf.variable_scope("train"):
     #print(labels)
     cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=labels, logits=final_captions)
     mean_cross_entropy = tf.reduce_mean(cross_entropy)
+    tf.summary.scalar('mean_cross_entropy', mean_cross_entropy)
     optimizer = tf.train.AdamOptimizer(0.0001)
     training_step = optimizer.minimize(mean_cross_entropy)
     #print(final_captions)
     #print(labels)
     correct_prediction = tf.equal(tf.argmax(final_captions, 0), tf.argmax(labels, 0))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+    tf.summary.scalar('accuracy', accuracy)
 
 loss_list = []
 train_acc_list = []
 val_acc_list = []
 
 batch_gen = batch_generator_3.Attend()
+
 #print(batch_gen.get_sizes())
 session = tf.Session()
+merged = tf.summary.merge_all()
+train_writer = tf.summary.FileWriter(summaries_dir + '/train',
+                                      session.graph)
+test_writer = tf.summary.FileWriter(summaries_dir + '/test')
 session.run(tf.global_variables_initializer())
 
 for x in range(epochs):
@@ -178,9 +204,9 @@ for x in range(epochs):
         #training_images = np.resize(training_images, [batch_size, 225, 45, 3])
         #print(training_labels.shape)
 
-        train_maps, loss, _, train_accuracy = session.run([final_maps, mean_cross_entropy, training_step, accuracy],
+        _summaries, train_maps, loss, _, train_accuracy = session.run([merged, final_maps, mean_cross_entropy, training_step, accuracy],
                                               feed_dict={images: training_images, labels: training_labels})
-
+        train_writer.add_summary(_summaries)
 
         train_acc_list.append(train_accuracy)
 
@@ -191,10 +217,12 @@ for x in range(epochs):
             validation_images = validation_data[0]
             validation_labels = validation_data[1]
 
-            val_maps, val_loss, val_accuracy = session.run([final_maps, mean_cross_entropy, accuracy],
+            _v_summaries, val_maps, val_loss, val_accuracy = session.run([merged, final_maps, mean_cross_entropy, accuracy],
                                                            feed_dict={images: validation_images, labels: validation_labels})
 
+            test_writer.add_summary(_v_summaries)
             val_acc_list.append(val_accuracy)
+
 
 test_batch = batch_gen.get_test_batch(8)
 test_data = next(test_batch)
@@ -207,7 +235,7 @@ out_map, test_loss, test_acc = session.run([final_maps, mean_cross_entropy, accu
 
 print(train_acc_list)
 print(val_acc_list)
-
+'''
 print(out_map.shape)
 print(test_images.shape)
 
@@ -217,7 +245,7 @@ print(map1)
 fig = plt.figure()
 plt.imshow(map1)
 plt.show()
-
+'''
 
 # attentions, final_maps, final_captions
 
