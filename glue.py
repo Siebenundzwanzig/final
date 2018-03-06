@@ -1,7 +1,6 @@
 ### Simple script to put together a number of jpgs from the kaggle dataset.
 ### An arbitrary number of symbols, length and number of equations is set.
 
-
 from PIL import Image
 import sys
 import os
@@ -15,6 +14,10 @@ num_of_images = 10000     # the no of formulas created
 input_path = '/home/laars/uni/WS2017/tensorflow/final/data/extracted_images'
 output_folder = '/home/laars/uni/WS2017/tensorflow/final/glued_images'
 
+
+# Our dictionary containing 20 symbols of the Kaggle Handwritten Math Symbols Dataset:
+# https://www.kaggle.com/xainano/handwrittenmathsymbols
+# Maps symbols to numbers.
 dictionary = {
         '0' : 0,
         '1' : 1,
@@ -40,7 +43,8 @@ dictionary = {
 
 
 
-# Method to get single pictures
+# Method to get all single picture-files in a list
+# and put them at the right place in dictionary.
 def get_symbols():
     symbols = {}
     for root, dirs, files in os.walk(input_path):
@@ -48,62 +52,63 @@ def get_symbols():
         for file in files:
             path_file = os.path.join(root, file)
             actual_symbol.append(path_file)
-
             symbols[re.sub("/.*", "", path_file.replace(input_path, "").replace("/", "", 1))] = actual_symbol
 
-    return symbols
+    return symbols # contains ALL images in given input folder
 
-# Method to glue symbols together as a "formula"
+
+# Glue random symbols together as a "formula", transform labels into one-hot-matrices
+# and save as numpy files.
+
 def glue(symbols, symbols_in_image, num_of_images, output_path):
-    # counts = {}
-    # for key in symbols:
-    #     counts[key] = 0
+
     all_im = []
     one_hots = []
+
     for j in range(num_of_images):
+
+
         symbols_used = []
         for i in range(symbols_in_image):
+            # get a random key and symbol
+            # append it to symbols_used as tuple
             key = random.choice(list(symbols.keys()))
-            # counts[key] = counts[key] + 1
             symbols_used.append((key, random.choice(symbols[key])))
-
+        # open files as Image objects
         images = list(map(Image.open, [symbol[1] for symbol in symbols_used]))
 
+        ### Data ###
+        # gather data for glued image
         widths, heights = zip(*(i.size for i in images))
-
         total_width = sum(widths)
         max_height = max(heights)
-
+        # create new Image object
         new_im = Image.new('RGB', (total_width, max_height), (255, 255, 255))
 
+        # paste symbols in symbols_used vertically in the new Image
         x_offset = 0
         for im in images:
             new_im.paste(im, (x_offset, 0))
             x_offset += im.size[0]
+        # convert to numpy array
         all_im.append(np.asarray(new_im))
-        #print(all_im.shape)
 
+        ### Labels ###
 
-        label = []
+        label_as_num = []
+        # Get labels in symbols_used and get correct key from dictionary
         for string in symbols_used:
-            label.append(string[0])
-        # print(label)
-        label_as_num = np.array([], dtype = int)
-        for a in label:
-            label_as_num = np.append(label_as_num, dictionary[a])
-        # print(label_as_num)
+            label_as_num.append(dictionary[string[0]])
+
+        # convert label-list to one-hot-matrix
         one_hot = np.zeros((5, 20))
         one_hot[np.arange(5), label_as_num] = 1
-        # print(one_hot)
-
         one_hots.append(one_hot)
 
-    # print(all_im.shape, one_hots.shape)
+    # save as numpy files .npy
+    # labels and data, respectively
     np.save(output_path + "_data", all_im)
     np.save(output_path + "_labels", one_hots)
-    # print(all_im.shape, one_hots.shape)
-
-    # print(counts)
 
     print("Done.")
 
