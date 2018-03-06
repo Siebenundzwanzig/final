@@ -1,0 +1,86 @@
+\documentclass[12pt,letterpaper, twoside]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{float}
+\usepackage{cite}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\begin{document}
+\begin{titlepage}
+\title{Show, Attend and Tell}
+\author{Paul Liebenow, Philip Fürste, Berend Brandt}
+\date{February 2018}
+\maketitle
+\end{titlepage}
+\newpage
+\tableofcontents
+\newpage
+\section{Introduction}
+Making Computers able to understanding images scenes is one of the key problems in computer vision. 
+There have been different approaches to this problem. The classic approach was to use object detectors which scan the input image for specific shapes or colors.
+The modern approach is to use deep neural networks and the encoder - decoder framework. 
+We want to define those terms shortly.
+Deep neural networks (DNN) are artificial neural network with multiple layers where every layer extracts different features and the output is a composition of those features. There exist different architectures for DNNs. For the encoder-decoder-framework we used recurrent neural network (RNN) and convolutional neural networks (CNN).
+The encoder-decoder-framework is a composition of DNNs. The encoder extracts low level features and compresses those in a feature vector and the decoder learns with this information to output. The origins of this framework can be found in neural machine translation \cite{cho2014learning}. 
+In neural machine translation the task is to translate sentences of one language into another. When people tried to solve this task they faced the problem that the encoder-decoder-framework wasn't capable of translating very long sentences because of the information loss through the compression into a feature vector.
+In 2014 an approach to solve this problem proposed by Bahdanau,Cho and Bengio was to use attention \cite{bahdanau2014neural}. Attention is the encoding of the input into a fixed-length vector and the learning of joint alignation and translation.
+Since the task of neural machine translation and generating image caption are similiar in their nature Bengio applied attention to the problem of generating image caption using the encoder-decoder-framework \cite{xu2015show}. The framework consists of a CNN as an encoder and a RNN as decoder. The low level features extracted by the CNN are encoded into an vector which is then fed into the RNN to generate the image caption. 
+\section{Methods}
+In this part we will first explain how we preprocessed the kaggle handwritten-math-symbol data set.
+Secondly we will present the algorithm that we implemented using Tensorflow.
+\subsection{Data preprocessing}
+The data preprocessing was done in two steps.
+First we implemented a class glue.py which glued randomly the different math symbols on to each other. We choosed 20 different symbols.
+Secondly we implemented a batch generator which merged glued images together and generated one-hote-vectors which we used as labels. 
+\subsection{The Algorithm}
+\subsubsection{Theoretical Basis}
+We will now try to show the mathematical formalism of the model that we implemented. We will try to be especially cautious to derive a clear definition of attention. In the paper 2 kinds of attention were introduced: hard and soft attention. We focused on soft attention only.
+\newline We will use the notation from paper [2]. Let small letters be scalars (only if explicitly told small letters will be sets),bold small letter vectors and big letters matrices.
+We start by defining some terms:
+\newline Let X be the input image. Let $s_{t}$ be the position where the model focus its attention.
+\subsubsection*{Encoder: Convolutional Network}
+\newline Let the feature vector be $$a = \{\bf a_{1},...,\bf a_{L}\}, a_{i} \in R^{D}$$ L D-dimensional vectors representing the corresponding part of X. We generate this vector through the convolutional network.
+\newline Let $$y = \{\bf y_{1},...,\bf y_{C}\}, y_{i} \in R^{K}$$ be the caption where K is the size of vocabulary and C is the length of the caption.
+\subsubsection*{Decoder: Long-Short-Term-Memory (LSTM)}
+The paper used a Long-Short-Term-Memory cell to generate a caption. At every timestep t the framework produced one word depending on context vector $\bf \^{z}_{t}$, previous hidden state $\bf h_{t-1}$ and previously generated word $E\bf y_{t-1}$.
+The exact gating of the LSTM cell can be found in the paper.
+\subsubsection*{Context vector $\bf \^{z}$: heart of attention}
+The context vector is defined in the paper as the position at time t where the model directs its attention.
+We state shortly how it is computed. First we compute $\bf e_{t,i}$
+\begin{equation*}
+e_{t,i} =  f_{att}(\bf a_{i}, h_{t-1})
+\end{equation*} 
+where $f_{att}$ is a Multilayer Perceptron. Now we plug the $\bf e_{t,i}$ into the softmax function to normalize and therefore reduce the influence of outliers: 
+\begin{equation*}
+\alpha_{t,i} = \frac{exp(e_{t,i})}{\sum_{k=1}^L exp(e_{t,k})}
+\end{equation*}
+since the $\alpha_{t,i}$ add up to 1 after normalization we can see them as the probability that the model has choosen the right position $s_{t}$  at time t or as the i-th weight for the feature vector $a_{i}$ at a time t. We arrive at $\bf \^{z}_{t}$ with:
+\begin{equation*}
+\bf \^{z}_{t} =\phi(\bf \{a_{i}\},\{\alpha_{t,i}}\})
+\end{equation*}
+\subsubsection*{Attention mechanism: Deterministic "Soft" Attention}
+In the case of soft attention $\phi(\{\bf a_{i}\},\{\alpha_{t,i}}\})$ is simply given as:
+\begin{equation*}
+\phi(\{\bf a_{i}\},\{\alpha_{t,i}}\}) = \sum_{i=1}^L \alpha_{t,i}\cdot a_{i}
+\end{equation*}
+which is the expected value of the attented position at time t. The attention mechanism consists now in maximizing the expected value for all timesteps t with the help of the backpropagation algorithm.
+\newpage\subsubsection*{Summary}
+\newline To summarize first the encoder computes $\{\bf a_{1},...,\bf a_{L}\}$. Secondly $\{\bf a_{1},...,\bf a_{L}\}$ is passed to the decoder which is doing the following in every timestep t:
+\begin{enumerate}
+\item compute probability $\alpha_{t,i}$
+\item compute contex vector $\bf \^{z}_{t}$
+\item generate new output vector $\bf y_{t}$
+\item compute new decoder state $\bf h_{t+1}$
+\end{enumerate}
+The training of the LSTM cell is done after every timestep with the help of stochastic gradient descent. More precisly in the training session we are feeding one hot vectors with the feature vectors $a_{t}$ into the LSTM cell and applying the backpropagation algorithm. With this procedure training of the weights of the MLP and of the RNN is done at the same time.
+\newline Question: Why does the gradient not explode?
+\subsubsection*{Evalution of the Theoretical Basis}
+We will evaluate this framework by comparing it to the NIC from \cite{Oriol2015} which used the same framework without attention. On the Flickr8k Data set the NIC scored 63 under the BLEU-4 Metric and the model that we partly implemented 67. The BLEU metric indicates how similiar a machine translational is to a human with value 100 being identical. Why does the framework from Xu et. al perform better? The weakness of the encoder-decoder framework without attention comes from the fact that all information from the   encoder is compressed into the feature vector which is then fed into the decoder. The framework from Bahdanau et. al ,which was applied to images by our paper, learns to jointly align the feature vector from the encoder. Therefore it becomes possible for the network to catch semantic connections on a larger scale than it is possible for the framework from Oriol et. al. This is done because of the $\alpha_{t,i}$ jointly aligning the $\bf a_{i}$ by weighting them. More precisly the $\alpha_{t,i}$ are weighting the feature vectors $\bf a_{i}$ according to the currently attended $\bf s_{t}$ or in mathematical terms maximizing the expected value $\sum_{i=1}^L \alpha_{t,i}\cdot \bf a_{i}$ given conditional probability of $\bf s_{t}$ given $\{\bf a_{1},...,\bf a_{L}\}$.
+\subsubsection{Implemention}
+\section{Results}
+\subsection{Experiments}
+\section{Conclusion}
+\newpage
+\bibliography{mybib}{}
+\bibliographystyle{plain}
+\end{document}
+

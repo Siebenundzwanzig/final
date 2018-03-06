@@ -1,0 +1,9 @@
+\contentsline {section}{\numberline {1}Introduction}{3}
+\contentsline {section}{\numberline {2}Methods}{3}
+\contentsline {subsection}{\numberline {2.1}Data preprocessing}{4}
+\contentsline {subsection}{\numberline {2.2}The Algorithm}{4}
+\contentsline {subsubsection}{\numberline {2.2.1}Theoretical Basis}{4}
+\contentsline {subsubsection}{\numberline {2.2.2}Implemention}{7}
+\contentsline {section}{\numberline {3}Results}{7}
+\contentsline {subsection}{\numberline {3.1}Experiments}{7}
+\contentsline {section}{\numberline {4}Conclusion}{7}
